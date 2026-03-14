@@ -274,11 +274,22 @@ employer_tiers     (id, tenant_id, employer_name, tier, updated_at)
 
 When working in this repository:
 
-- Read this file before any change
-- Respect the multi-tenant `tenant_id` scope on every DB query
-- Keep modules decoupled — one file/class per integration adapter
-- Use the employer tier DB for all employer scoring (no hardcoding)
-- All AI prompts must reference the writing style guide document
-- New n8n workflows must be documented in `/docs/workflows/`
-- English-only resume parsing for now — no multilingual handling yet
-- LinkedIn URL is **mandatory** on new application forms — do not make it optional
+> **Also read [`SYSTEM-DESIGN.md`](./SYSTEM-DESIGN.md)** before writing any code. It defines the project's architecture patterns, bounded contexts, directory structure, port interfaces, scalability rules, and anti-patterns.
+
+### Core Rules
+
+| Rule | Detail |
+|---|---|
+| Read AGENTS.md + SYSTEM-DESIGN.md first | Before any change |
+| Hexagonal Architecture | All external providers go behind a Port interface |
+| Clean Architecture layers | Domain → Use Cases → Adapters → Infrastructure (no reverse deps) |
+| `tenant_id` on every DB query | Missing `tenant_id` = critical bug |
+| No business logic in controllers | Controllers call use cases only |
+| No framework deps in domain layer | Entities and value objects must be pure Python/TS |
+| All LLM calls are async | Never call OpenAI synchronously in an HTTP request |
+| Employer tier always from DB | Never hardcode tier values |
+| Skills must be normalised | Pass all raw skill strings through `SkillSet.from_raw()` |
+| LinkedIn URL never overwritten | Enrichment only adds, never replaces confirmed data |
+| No hardcoded secrets | All API keys via environment variables |
+| n8n workflows documented | Every scenario has a clear name and module labels in `/docs/workflows/` |
+| English-only parsing for now | No multilingual resume handling until explicitly scoped |
