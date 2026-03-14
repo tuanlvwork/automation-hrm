@@ -1,0 +1,269 @@
+# ARCHITECTURE.md — AI Recruitment Platform
+
+C4 architecture diagrams for the multi-tenant AI-powered recruitment automation platform.
+
+---
+
+## Level 1 — System Context
+
+```
+  ┌──────────────┐   ┌──────────────┐   ┌──────────────┐
+  │ Recruiter    │   │  Candidate   │   │ Super Admin  │
+  │ (Agency /    │   │ (Applicant)  │   │  (Platform   │
+  │ IT Company)  │   │              │   │   Owner)     │
+  └──────┬───────┘   └──────┬───────┘   └──────┬───────┘
+         │                  │                  │
+         └──────────────────┼──────────────────┘
+                            │ HTTPS
+               ┌────────────▼──────────────────┐
+               │    AI Recruitment Platform    │
+               │      (Multi-tenant SaaS)      │
+               │                               │
+               │  • Resume parsing & scoring   │
+               │  • AI job ad generation       │
+               │  • LinkedIn enrichment        │
+               │  • ATS pipeline management    │
+               └──┬──────────┬──────────┬──────┘
+                  │          │          │
+                  ▼          ▼          ▼
+     ┌────────────────┐  ┌────────┐  ┌────────────────┐
+     │  OpenAI API    │  │   S3   │  │ Proxycurl/PDL  │
+     │  (GPT-4o LLM)  │  │Storage │  │ (LinkedIn)     │
+     └────────────────┘  └────────┘  └────────────────┘
+
+  ┌─────────────────────────────────────────────────────┐
+  │  n8n (self-hosted)  ──Webhooks──►  Platform above   │
+  └─────────────────────────────────────────────────────┘
+```
+
+---
+
+## Level 2 — Container Diagram
+
+```
+  ┌──────────────────────────────────────────────────────────┐
+  │                  AI Recruitment Platform                 │
+  │                                                          │
+  │  ┌────────────────────────────────────────────────────┐  │
+  │  │  Web App  (Next.js)                                │  │
+  │  │  Recruiter & Candidate UI, job forms, workspace    │  │
+  │  └──────────────────────┬─────────────────────────────┘  │
+  │                         │ REST / JSON                    │
+  │  ┌──────────────────────▼─────────────────────────────┐  │
+  │  │  Backend API  (FastAPI)                            │  │
+  │  │  Auth · ATS · Parse · Score · AdGen · Enrich       │  │
+  │  └───┬─────────┬─────────┬────────┬───────────────────┘  │
+  │      │         │         │        │                      │
+  │  ┌───▼───┐ ┌───▼───┐ ┌───▼──┐ ┌───▼──────────┐           │
+  │  │Resume │ │Score  │ │ Job  │ │  LinkedIn    │           │
+  │  │Parser │ │Engine │ │  Ad  │ │  Enrichment  │           │
+  │  │  Svc  │ │       │ │ Gen  │ │  Service     │           │
+  │  └───┬───┘ └───┬───┘ └───┬──┘ └───┬──────────┘           │
+  │      └─────────┴─────────┴────────┘                      │
+  │                          │                               │
+  │  ┌───────────────────────▼───────────────────────────┐   │
+  │  │  Data Layer                                       │   │
+  │  │  ┌─────────────────────────┐  ┌─────────────────┐ │   │
+  │  │  │  PostgreSQL + pgvector  │  │  S3 File Store  │ │   │
+  │  │  │  candidates · jobs      │  │  resumes · docs │ │   │
+  │  │  │  scores · embeddings    │  │                 │ │   │
+  │  │  └─────────────────────────┘  └─────────────────┘ │   │
+  │  └───────────────────────────────────────────────────┘   │
+  │                                                          │
+  │  ┌────────────────────────────────────────────────────┐  │
+  │  │  n8n Automation Engine  (self-hosted)              │  │
+  │  │  Crons · Webhooks · Parse · Score · Enrich flows   │  │
+  │  └────────────────────────────────────────────────────┘  │
+  └──────────────────────────────────────────────────────────┘
+
+  External APIs
+  ┌──────────────────┐   ┌──────────────────┐
+  │  OpenAI GPT-4o   │   │  Proxycurl / PDL │
+  └──────────────────┘   └──────────────────┘
+```
+
+---
+
+## Level 3 — Component Diagram: Backend API
+
+```
+  ┌──────────────────────────────────────────────────────────┐
+  │                   Backend API  (FastAPI)                 │
+  │                                                          │
+  │  ┌────────────────────────┐  ┌────────────────────────┐  │
+  │  │     Auth Module        │  │       ATS Module       │  │
+  │  │  JWT · Tenant RBAC     │  │  Jobs · Candidates     │  │
+  │  │  Role-based access     │  │  Applications · Stages │  │
+  │  └────────────────────────┘  └────────────────────────┘  │
+  │                                                          │
+  │  ┌──────────────┐  ┌──────────────┐  ┌───────────────┐   │
+  │  │    Parse     │  │    Score     │  │  Ad Generator │   │
+  │  │  Controller  │  │  Controller  │  │  Controller   │   │
+  │  │              │  │              │  │               │   │
+  │  │ • Upload     │  │ • Trigger    │  │ • Request ad  │   │
+  │  │   resume     │  │   scoring    │  │   generation  │   │
+  │  │ • Call       │  │ • Write      │  │ • Store draft │   │
+  │  │   parser     │  │   score +    │  │ • Approve     │   │
+  │  │ • Persist    │  │   breakdown  │  │   workflow    │   │
+  │  └──────┬───────┘  └──────┬───────┘  └───────────────┘   │
+  │         │                 │                              │
+  │  ┌──────▼───────┐  ┌──────▼───────┐  ┌───────────────┐   │
+  │  │    Dedup     │  │  Shortlist   │  │  Enrichment   │   │
+  │  │   Service    │  │   Module     │  │  Controller   │   │
+  │  │              │  │              │  │               │   │
+  │  │ Fuzzy match  │  │ Tag top-20   │  │ On-demand /   │   │
+  │  │ name + email │  │ AI rank      │  │ Cron lookup   │   │
+  │  │ before save  │  │ summary      │  │ LinkedIn URL  │   │
+  │  └──────────────┘  └──────────────┘  └───────────────┘   │
+  │                                                          │
+  │  ┌────────────────────────────────────────────────────┐  │
+  │  │               Employer Tier Sync                   │  │
+  │  │   Excel upload → parse → upsert employer_tiers     │  │
+  │  └────────────────────────────────────────────────────┘  │
+  └──────────────────────────────────────────────────────────┘
+```
+
+---
+
+## Workflow Sequences
+
+### 1. Resume Submission → Score → Shortlist
+
+```mermaid
+sequenceDiagram
+  actor Candidate
+  participant WebApp as Web App
+  participant API as Backend API
+  participant n8n
+  participant Parser as Resume Parser
+  participant OpenAI
+  participant Scorer as Scoring Engine
+  participant DB as PostgreSQL
+
+  Candidate->>WebApp: Submit application + resume
+  WebApp->>API: POST /applications (resume file)
+  API->>DB: Store original resume file (S3 ref)
+  API->>n8n: Webhook — new application created
+  n8n->>API: POST /parse (resume_url, application_id)
+  API->>Parser: Extract text from PDF / DOCX
+  Parser->>OpenAI: Structured extraction prompt
+  OpenAI-->>Parser: Structured JSON candidate data
+  Parser-->>API: Parsed candidate fields
+  API->>DB: Dedup check (fuzzy name + email)
+  API->>DB: Upsert candidate record
+  n8n->>API: POST /score (application_id)
+  API->>Scorer: Score candidate vs job
+  Scorer->>DB: Read employer tiers + scoring weights
+  DB-->>Scorer: Tier & weight data
+  Scorer-->>API: Score (0–100) + breakdown
+  API->>DB: Write suitability_score to application
+  API->>DB: Tag top-20 if score qualifies
+  API->>OpenAI: Generate AI ranking summary
+  OpenAI-->>API: Summary text
+  API->>DB: Store AI summary
+```
+
+---
+
+### 2. Job Ad Generation
+
+```mermaid
+sequenceDiagram
+  actor Recruiter
+  participant WebApp as Web App
+  participant API as Backend API
+  participant n8n
+  participant AdGen as Ad Generator
+  participant OpenAI
+  participant DB as PostgreSQL
+
+  Recruiter->>WebApp: Publish new job
+  WebApp->>API: POST /jobs (job details)
+  API->>DB: Save job (status: draft)
+  API->>n8n: Webhook — job published
+  n8n->>API: POST /ads/generate (job_id)
+  API->>AdGen: Generate ad (job details + style guide)
+  AdGen->>OpenAI: Prompt with job + style guide
+  OpenAI-->>AdGen: Generated job ad text
+  AdGen-->>API: Job ad draft
+  API->>DB: Store ad draft (status: pending_approval)
+  API-->>WebApp: Notify recruiter — ad ready for review
+  Recruiter->>WebApp: Review ad draft
+  Recruiter->>API: POST /ads/:id/approve
+  API->>DB: Update job ad (status: live)
+```
+
+---
+
+### 3. LinkedIn Enrichment — Weekly Cron
+
+```mermaid
+sequenceDiagram
+  participant n8n
+  participant API as Backend API
+  participant DB as PostgreSQL
+  participant Enricher as Enrichment Service
+  participant Proxycurl
+
+  n8n->>DB: Query candidates (last_career_check_at older than 7 days, active within 2 years)
+  DB-->>n8n: Candidate list
+
+  loop For each candidate
+    n8n->>API: POST /enrich (candidate_id)
+    API->>Enricher: Fetch latest LinkedIn profile
+    Enricher->>Proxycurl: GET profile by LinkedIn URL
+    Proxycurl-->>Enricher: Latest profile data
+    Enricher-->>API: Updated employer / title / dates
+    API->>DB: Update employment_history if changed
+    API->>DB: Update last_career_check_at = now()
+  end
+```
+
+---
+
+## Infrastructure Overview
+
+```
+  ┌──────────────────────────────────────────────────────────┐
+  │                    Cloud  (AWS / GCP)                    │
+  │                                                          │
+  │  ┌──────────────────────────────────────────────────┐    │
+  │  │  Frontend Layer                                  │    │
+  │  │  ┌────────────────────┐                          │    │
+  │  │  │  Next.js  Web App  │                          │    │
+  │  │  └────────────────────┘                          │    │
+  │  └──────────────────────────────────────────────────┘    │
+  │                        │ REST                            │
+  │  ┌─────────────────────▼────────────────────────────┐    │
+  │  │  Backend Layer                                   │    │
+  │  │  ┌──────────┐  ┌──────────┐  ┌──────────────┐    │    │
+  │  │  │ FastAPI  │  │ Resume   │  │  AI Scoring  │    │    │
+  │  │  │   API    │  │  Parser  │  │   Engine     │    │    │
+  │  │  └──────────┘  └──────────┘  └──────────────┘    │    │
+  │  │  ┌──────────────────┐  ┌──────────────────────┐  │    │
+  │  │  │  Ad Gen Service  │  │  Enrichment Service  │  │    │
+  │  │  └──────────────────┘  └──────────────────────┘  │    │
+  │  └──────────────────────────────────────────────────┘    │
+  │                                                          │
+  │  ┌──────────────────────────────────────────────────┐    │
+  │  │  Data Layer                                      │    │
+  │  │  ┌──────────────────────┐  ┌──────────────────┐  │    │
+  │  │  │  PostgreSQL+pgvector │  │   S3  Storage    │  │    │
+  │  │  └──────────────────────┘  └──────────────────┘  │    │
+  │  └──────────────────────────────────────────────────┘    │
+  │                                                          │
+  │  ┌──────────────────────────────────────────────────┐    │
+  │  │  Automation Layer                                │    │
+  │  │  ┌──────────────────────┐                        │    │
+  │  │  │  n8n  (self-hosted)  │                        │    │
+  │  │  └──────────────────────┘                        │    │
+  │  └──────────────────────────────────────────────────┘    │
+  └──────────────────────────────────────────────────────────┘
+                             │
+         ┌───────────────────┴───────────────────┐
+         │           External  APIs              │
+         │  ┌──────────────┐  ┌───────────────┐  │
+         │  │ OpenAI GPT-4o│  │ Proxycurl/PDL │  │
+         │  └──────────────┘  └───────────────┘  │
+         └───────────────────────────────────────┘
+```
