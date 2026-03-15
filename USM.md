@@ -3,7 +3,8 @@
 
 > **Format:** Activity → Task → User Story (prioritized by release)
 > **Users:** Candidate · Recruiter · Agency Admin · Super Admin
-> **Releases:** 🔴 MVP · 🟠 V1.1 · 🟡 V2.0
+> **Releases:** 🔴 MVP · 🟠 V1.1 · 🟡 V2.0 · 🔵 V3.0
+> **Sources:** STITCH-DESIGN.md · AGENTS.md · SYSTEM-DESIGN.md · TO-DO.md
 
 ---
 
@@ -266,14 +267,91 @@ and mapped to a **Screen** from `STITCH-DESIGN.md`.
 
 ---
 
+## USER 2 — RECRUITER (continued from A10)
+
+### A20 · AI Candidate Outreach (TO-DO #4)
+
+| Task | User Story | Release | Priority | Screen |
+|---|---|---|---|---|
+| Generate outreach email | As a recruiter, I want the AI to draft a personalised outreach email per shortlisted candidate so I save hours of writing | 🟠 V1.1 | Medium | S15 |
+| Review and edit draft | As a recruiter, I want to review and edit the AI draft before sending so I maintain quality | 🟠 V1.1 | Medium | S15 |
+| One-click send | As a recruiter, I want to send the approved email in one click so outreach is instant | 🟠 V1.1 | Medium | S15 |
+
+---
+
+### A21 · Skill Taxonomy & Deduplication (TO-DO #5, #6)
+
+> **Priority: High — required in MVP parser pipeline**
+
+| Task | User Story | Release | Priority | Screen |
+|---|---|---|---|---|
+| Auto-normalise skills | As a recruiter, I want raw skill strings normalised ("JS" → "JavaScript") so search and scoring are consistent | 🔴 MVP | **High** | — (backend) |
+| Detect duplicate candidates | As a recruiter, I want the system to flag a duplicate before creating a new candidate record so my database stays clean | 🔴 MVP | **High** | S6, S17 |
+| Review duplicate match | As a recruiter, I want to see the suspected duplicate profile side-by-side so I can decide to merge or keep | 🔴 MVP | **High** | S6, S17 |
+| Merge duplicate records | As a recruiter, I want to merge two duplicate candidate profiles into one so I don't lose data | 🟠 V1.1 | High | S16 |
+
+---
+
+### A22 · Candidate Freshness & Re-engagement (TO-DO #7, #10)
+
+| Task | User Story | Release | Priority | Screen |
+|---|---|---|---|---|
+| Surface freshness signal | As a recruiter, I want to see a "freshness" indicator on candidates who recently changed jobs so I target warm leads first | 🟠 V1.1 | Medium | S13, S16 |
+| Receive re-engagement alert | As a recruiter, I want to be alerted when a previously rejected candidate's score improves so I reconsider them automatically | 🟠 V1.1 | Medium | S19 |
+| View score delta | As a recruiter, I want to see what changed in a candidate's profile to trigger the alert so I understand the improvement | 🟠 V1.1 | Medium | S15 |
+
+---
+
+### A23 · AI Score Calibration (TO-DO #3)
+
+| Task | User Story | Release | Priority | Screen |
+|---|---|---|---|---|
+| Mark outcome (hired/rejected) | As a recruiter, I want to record the final outcome for applications so the system can learn from hiring decisions | 🟡 V2.0 | Medium | S15 |
+| View auto-tuned weights | As a recruiter, I want to see how the AI has adjusted scoring weights based on past outcomes so I trust the calibration | 🔵 V3.0 | Medium (post-MVP) | S22 |
+
+---
+
+### A24 · Job Ad A/B Testing (TO-DO #8)
+
+| Task | User Story | Release | Priority | Screen |
+|---|---|---|---|---|
+| Generate two ad variants | As a recruiter, I want the AI to produce two tone variants (professional / casual) so I can test which converts better | 🟡 V2.0 | Low | S12 |
+| View variant performance | As a recruiter, I want to see application counts per variant so I know which ad works | 🟡 V2.0 | Low | S12, S18 |
+| Set winner as default | As a recruiter, I want to publish the winning variant as the active ad so performance improves over time | 🟡 V2.0 | Low | S12 |
+
+---
+
+### A25 · Multilingual Parsing & Job Board Integration (TO-DO #9, #12)
+
+| Task | User Story | Release | Priority | Screen |
+|---|---|---|---|---|
+| Parse Vietnamese resume | As a recruiter, I want to upload a Vietnamese-language CV and receive structured data so I can serve the Vietnam market | 🟡 V2.0 | Medium (roadmap) | S17 |
+| Push job ad to ITViec | As a recruiter, I want to publish a job to ITViec directly from the platform so I don't have to re-post manually | 🟡 V2.0 | Medium (roadmap) | S10, S12 |
+| Push job ad to LinkedIn | As a recruiter, I want to publish a job to LinkedIn Jobs so I reach a wider candidate pool | 🔵 V3.0 | Medium (roadmap) | S10, S12 |
+| Pull external applications | As a recruiter, I want external applications imported automatically so I manage all candidates in one place | 🟡 V2.0 | Medium (roadmap) | S13 |
+
+---
+
+## Priority Summary (derived from TO-DO.md)
+
+| Priority | Items | Release target |
+|---|---|---|
+| 🔴 High — MVP required | Skill taxonomy normalisation (A21) · Duplicate detection (A21) · Bulk import (A9) | 🔴 MVP |
+| 🟠 High — Early post-MVP | Semantic search (A8) · Freshness score (A22) · Re-engagement alerts (A22) · Outreach drafts (A20) | 🟠 V1.1 |
+| 🟡 Medium — Planned | Score calibration (A23) · Multilingual parsing (A25) · Job board push (A25) | 🟡 V2.0 |
+| 🔵 Low / Future | AI A/B testing (A24) · LinkedIn Jobs (A25) · Weight auto-tuning (A23) | 🔵 V3.0 |
+
+---
+
 ## Story Count by Release
 
 | Release | Stories | Screens involved |
 |---|---|---|
-| 🔴 MVP | 55 stories | 25 screens |
-| 🟠 V1.1 | 21 stories | 15 screens |
-| 🟡 V2.0 | 5 stories | 4 screens |
-| **Total** | **81 stories** | **30 screens** |
+| 🔴 MVP | 58 stories (+3 from TO-DO #5, #6) | 25 screens |
+| 🟠 V1.1 | 30 stories (+9 from TO-DO #4, #7, #10) | 17 screens |
+| 🟡 V2.0 | 12 stories (+7 from TO-DO #8, #9, #12) | 6 screens |
+| 🔵 V3.0 | 3 stories (TO-DO #3 calibration, #12 LinkedIn) | 2 screens |
+| **Total** | **103 stories** | **30 screens** |
 
 ---
 
@@ -313,3 +391,16 @@ Use this to verify every screen has a backing user story before designing it in 
 | S28 Super Admin Detail | A19: Tenant detail, impersonate, notes |
 | S29 Empty State Dashboard | A11: First login guidance |
 | S30 Landing Page | — (Marketing, no user story) |
+
+### New screens from TO-DO backlog
+
+| Screen | Stories backing it |
+|---|---|
+| S15 (extended) | A20: Outreach draft, review, send · A22: Score delta · A23: Mark outcome |
+| S6, S17 (extended) | A21: Duplicate flag + side-by-side review |
+| S13, S16 (extended) | A21: Merge duplicates · A22: Freshness indicator |
+| S19 (extended) | A22: Re-engagement alert |
+| S12 (extended) | A24: A/B variants, set winner |
+| S18 (extended) | A24: Variant performance |
+| S22 (extended) | A23: Auto-tuned weights |
+| S10, S12 (extended) | A25: Push to ITViec / LinkedIn |
